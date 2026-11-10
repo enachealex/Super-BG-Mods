@@ -43,7 +43,6 @@ namespace SBGSplitscreen
             EventBroadcast.Init(harmony);
             ViewportFixes.Init(harmony);
             ContextPatcher.PatchLifecycle(PerPlayerEventSubscribers());
-            NetworkIdentity.clientAuthorityCallback += OnClientAuthorityChanged;
         }
 
         private static readonly Action<NetworkIdentity> notifyAuthority =
@@ -53,13 +52,43 @@ namespace SBGSplitscreen
         /// The server hands control of an object (a golf cart's driver seat, for one) to a joined
         /// player's connection. Mirror only marks objects as owned in the host's own game when the
         /// host's connection gets them; mark them for joined players too, or the host would treat
-        /// the object as someone else's and stop simulating it.
+        /// the object as someone else's and stop simulating it: a joined player at the wheel could
+        /// not drive. Hooked on Mirror's own methods rather than its clientAuthorityCallback event,
+        /// which Mirror clears every time a server shuts down (leaving a game, back to the menu).
         /// </summary>
+        [HarmonyPatch(typeof(NetworkIdentity), nameof(NetworkIdentity.AssignClientAuthority))]
+        private static class AuthorityGivenPatch
+        {
+            private static void Postfix(NetworkIdentity __instance, NetworkConnectionToClient conn, bool __result)
+            {
+                if (__result)
+                {
+                    OnClientAuthorityChanged(conn, __instance, true);
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(NetworkIdentity), nameof(NetworkIdentity.RemoveClientAuthority))]
+        private static class AuthorityTakenPatch
+        {
+            private static void Prefix(NetworkIdentity __instance)
+            {
+                if (__instance.isServer && __instance.connectionToClient != null)
+                {
+                    OnClientAuthorityChanged(__instance.connectionToClient, __instance, false);
+                }
+            }
+        }
+
         private static void OnClientAuthorityChanged(NetworkConnectionToClient conn, NetworkIdentity identity, bool authorityState)
         {
             if (!(conn is LocalPlayerConnection local) || !NetworkClient.active || identity == null)
             {
                 return;
+            }
+            if (Settings.DebugMode)
+            {
+                Plugin.Log.LogInfo($"{identity.name} {(authorityState ? "handed to" : "taken from")} player {local.Slot + 1}");
             }
             IdentityFlags.SetIsOwned(identity, authorityState);
             int previous = Contexts.Enter(local.Slot);

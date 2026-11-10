@@ -759,9 +759,61 @@ namespace SBGSplitscreen
                     var sb = new StringBuilder("Carts:\n");
                     foreach (var cart in UnityEngine.Object.FindObjectsByType<GolfCartInfo>(FindObjectsSortMode.None))
                     {
-                        sb.AppendLine($"  {cart.name} @{cart.transform.position:F1} seats=[{string.Join(", ", cart.passengers.Select((p, i) => $"{i}:{(p != null ? p.name : "-")}"))}]");
+                        var conn = cart.netIdentity.connectionToClient;
+                        var body = cart.GetComponent<Rigidbody>();
+                        sb.AppendLine($"  {cart.name} @{cart.transform.position:F1} speed={(body != null ? body.linearVelocity.magnitude : 0f):F1} "
+                            + $"controlledBy={(conn is LocalPlayerConnection l ? $"p{l.Slot + 1}" : conn != null ? conn.connectionId.ToString() : "host")} owned={cart.netIdentity.isOwned} "
+                            + $"sync={cart.Movement.syncDirection} reserver={(cart.NetworkdriverSeatReserver != null ? cart.NetworkdriverSeatReserver.name : "-")} "
+                            + $"seats=[{string.Join(", ", cart.passengers.Select((p, i) => $"{i}:{(p != null ? p.name : "-")}"))}]");
+                    }
+                    for (int c = 0; c < Contexts.MaxPlayers; c++)
+                    {
+                        if (Contexts.GetValue(c, "GameManager.localPlayerInfo") is PlayerInfo p && p != null)
+                        {
+                            var seat = p.ActiveGolfCartSeat;
+                            sb.AppendLine($"  p{c + 1} thinks: {(seat.golfCart != null ? $"{seat.golfCart.name} seat {seat.seat}" : "not in a cart")}");
+                        }
                     }
                     Plugin.Log.LogInfo(sb.ToString());
+                    break;
+                }
+                case "interact":
+                {
+                    // interact <player>: press that player's interact on whatever they face.
+                    var player = Contexts.GetValue(int.Parse(a[1]) - 1, "GameManager.localPlayerInfo") as PlayerInfo;
+                    var interactor = player != null ? player.GetComponentInChildren<PlayerInteractor>(true) : null;
+                    Plugin.Log.LogInfo($"interact: player {a[1]}: {(interactor != null && interactor.TryInteract())}");
+                    break;
+                }
+                case "exitcart":
+                {
+                    var player = Contexts.GetValue(int.Parse(a[1]) - 1, "GameManager.localPlayerInfo") as PlayerInfo;
+                    player?.ExitGolfCart(GolfCartExitType.Default);
+                    Plugin.Log.LogInfo($"exitcart: player {a[1]}");
+                    break;
+                }
+                case "cartseat":
+                {
+                    // cartseat <player> <seat>: switch seats in the cart they are in (0 = driver).
+                    var player = Contexts.GetValue(int.Parse(a[1]) - 1, "GameManager.localPlayerInfo") as PlayerInfo;
+                    Plugin.Log.LogInfo($"cartseat: player {a[1]} to seat {a[2]}: {(player != null && player.TrySwitchGolfCartSeatTo(int.Parse(a[2])))}");
+                    break;
+                }
+                case "bindings":
+                {
+                    // bindings <player>: that player's gamepad bindings for interacting and the golf cart.
+                    int previous = Contexts.Enter(int.Parse(a[1]) - 1);
+                    try
+                    {
+                        var controls = InputManager.Controls;
+                        var actions = new[] { controls.Gameplay.Interact }.Concat(controls.GolfCartDriver.Get().actions).Concat(controls.GolfCartShared.Get().actions);
+                        Plugin.Log.LogInfo("Bindings: " + string.Join("; ", actions.Select(act =>
+                            $"{act.actionMap.name}/{act.name}={string.Join("|", act.bindings.Where(b => b.effectivePath.Contains("Gamepad")).Select(b => b.effectivePath))} {(act.enabled ? "on" : "off")}")));
+                    }
+                    finally
+                    {
+                        Contexts.Restore(previous);
+                    }
                     break;
                 }
                 case "skiphole":
