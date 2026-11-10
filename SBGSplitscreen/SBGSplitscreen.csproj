@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>SBGSplitscreen</AssemblyName>
+    <RootNamespace>SBGSplitscreen</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <GameDir Condition="'$(GameDir)' == ''">D:\SteamLibrary\steamapps\common\Super Battle Golf</GameDir>
+    <ManagedDir>$(GameDir)\Super Battle Golf_Data\Managed</ManagedDir>
+    <BepInExCore>$(GameDir)\BepInEx\core</BepInExCore>
+    <!-- Set to false to build without copying into the game's plugins folder. -->
+    <DeployToGame Condition="'$(DeployToGame)' == ''">true</DeployToGame>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="$(BepInExCore)\BepInEx.dll" Private="false" />
+    <Reference Include="$(BepInExCore)\0Harmony.dll" Private="false" />
+
+    <Reference Include="$(ManagedDir)\UnityEngine.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.ScreenCaptureModule.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Unity.InputSystem.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.UIModule.dll" Private="false" />
+
+    <Reference Include="$(ManagedDir)\Unity.RenderPipelines.Universal.Runtime.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Unity.Localization.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\GameAssembly.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\SharedAssembly.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Steam.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Mirror.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Mirror.Transports.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\kcp2k.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\Facepunch.Steamworks.Win64.dll" Private="false" />
+    <Reference Include="$(ManagedDir)\FMODUnity.dll" Private="false" />
+  </ItemGroup>
+
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+    <MakeDir Directories="$(GameDir)\BepInEx\plugins\SBGSplitscreen" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\SBGSplitscreen" />
+  </Target>
+
+</Project>
